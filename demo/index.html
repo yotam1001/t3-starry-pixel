@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" data-theme-id="starry-pixel" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Starry Pixel demo</title>
+<link rel="stylesheet" href="../theme/starry-pixel.css">
+<style>
+  /* Bare-bones stand-in for T3's layout so the theme has something to dress. */
+  :root { --background:#0a1330; --foreground:#eef1fa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; color: #eef1fa; }
+  #root { height: 100%; }
+  #root > div { display: flex; height: 100%; }
+  [data-app-sidebar] { width: 250px; padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #ffffff14; }
+  [data-app-sidebar] .brand { font-weight: 650; padding: 4px 10px 12px; letter-spacing: .02em; }
+  [data-app-sidebar] .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; opacity: .6; padding: 10px 10px 4px; }
+  [data-app-sidebar] button { all: unset; padding: 7px 10px; border-radius: 8px; cursor: default; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  main > header { height: 48px; display: flex; align-items: center; padding: 0 18px; font-weight: 600; border-bottom: 1px solid #ffffff14; }
+  [aria-label='Conversation'] { flex: 1; overflow: hidden; padding: 28px 0; display: flex; flex-direction: column; gap: 18px; align-items: center; }
+  .msg { width: min(720px, 90%); }
+  [data-message-role='user'] { align-self: center; width: min(720px, 90%); display: flex; justify-content: flex-end; background: none; }
+  [data-message-role='user'] > div { padding: 10px 14px; border-radius: 14px; max-width: 70%; background: #1b2b5cc9; }
+  .chat-markdown { padding: 14px 18px; border-radius: 14px; }
+  .chat-markdown p { margin: 0 0 8px; } .chat-markdown p:last-child { margin: 0; }
+  .composer { width: min(720px, 90%); margin: 0 auto 22px; }
+  .group\/composer-surface { position: relative; border-radius: 16px; padding: 14px 16px; min-height: 84px; }
+  [aria-label='Message input'] { opacity: .65; }
+</style>
+</head>
+<body>
+<div id="root"><div>
+  <nav data-app-sidebar>
+    <div class="brand">T3 Code</div>
+    <div class="label">Threads</div>
+    <button data-active="true">Starry Pixel theme</button>
+    <button>Fix flaky login test</button>
+    <button>Refactor settings page</button>
+    <button>Write release notes</button>
+    <button>Add dark mode toggle</button>
+  </nav>
+  <main>
+    <header>Starry Pixel theme</header>
+    <section aria-label="Conversation">
+      <div data-message-role="user"><div>Install Starry Pixel from github.com/yotam1001/t3-starry-pixel</div></div>
+      <div class="msg" data-message-role="assistant"><div class="chat-markdown">
+        <p><strong>Done.</strong> Starry Pixel is installed and selected.</p>
+        <p>The sky swirls, stars and the moon drift, birds fly over, a fox and a hare cross the hills, stars fall, and the village lights follow your local clock.</p>
+      </div></div>
+      <div data-message-role="user"><div>it is beautiful</div></div>
+    </section>
+    <div class="composer"><div class="group/composer-surface"><div aria-label="Message input">Ask anything…</div></div></div>
+  </main>
+</div></div>
+<script src="../theme/engine.js"></script>
+</body>
+</html>
