@@ -282,32 +282,54 @@ if running; then echo "Done. Previous app moved to the Trash."; else
     subprocess.run(['open', '-a', 'Terminal', str(script)], check=True)
 
 
+def ps_quote(value):
+    """A PowerShell single-quoted literal (backslashes stay single; json.dumps would double them)."""
+    return "'" + str(value).replace("'", "''") + "'"
+
+
 def win_swap_script(manifest, src, label):
-    """A detached PowerShell script that quits T3, replaces the archive and reopens T3."""
+    """A PowerShell script, started outside T3's process tree, that quits T3, replaces the archive and reopens T3."""
     script = STATE / 'swap.ps1'
     log = STATE / 'swap.log'
     root, archive, exe = manifest['app'], manifest['archive'], manifest.get('exe') or ''
-    script.write_text(f'''$ErrorActionPreference = "Stop"
-$root = {json.dumps(root)}; $archive = {json.dumps(archive)}; $src = {json.dumps(str(src))}; $exe = {json.dumps(exe)}
-Start-Transcript -Path {json.dumps(str(log))} -Force | Out-Null
+    script.write_text(f"""$ErrorActionPreference = 'Stop'
+$root = {ps_quote(root)}; $archive = {ps_quote(archive)}; $src = {ps_quote(src)}; $exe = {ps_quote(exe)}
+$prefix = $root.TrimEnd([char]92).ToLower() + [char]92  # [char]92 is a backslash
+Start-Transcript -Path {ps_quote(log)} -Force | Out-Null
+function T3Processes {{ @(Get-Process | Where-Object {{ $_.Path -and $_.Path.ToLower().StartsWith($prefix) }}) }}
+"{label}: T3 closes in 8 seconds"
 Start-Sleep -Seconds 8
-function Running {{ @(Get-Process | Where-Object {{ $_.Path -and $_.Path.ToLower().StartsWith($root.ToLower()) }}).Count -gt 0 }}
-Get-Process | Where-Object {{ $_.Path -and $_.Path.ToLower().StartsWith($root.ToLower()) -and $_.MainWindowHandle -ne 0 }} | ForEach-Object {{ $_.CloseMainWindow() | Out-Null }}
-for ($i = 0; $i -lt 30 -and (Running); $i++) {{ Start-Sleep -Seconds 1 }}
-if (Running) {{ Get-Process | Where-Object {{ $_.Path -and $_.Path.ToLower().StartsWith($root.ToLower()) }} | Stop-Process -Force; Start-Sleep -Seconds 3 }}
-for ($i = 0; $i -lt 10; $i++) {{
-  try {{ Copy-Item -LiteralPath $src -Destination ($archive + ".starry-tmp") -Force; Move-Item -LiteralPath ($archive + ".starry-tmp") -Destination $archive -Force; "{label}: archive replaced"; break }}
-  catch {{ Start-Sleep -Seconds 2 }}
+T3Processes | Where-Object {{ $_.MainWindowHandle -ne 0 }} | ForEach-Object {{ $_.CloseMainWindow() | Out-Null }}
+for ($i = 0; $i -lt 30 -and (T3Processes).Count; $i++) {{ Start-Sleep -Seconds 1 }}
+if ((T3Processes).Count) {{ "{label}: T3 did not close by itself; stopping it"; T3Processes | Stop-Process -Force; Start-Sleep -Seconds 3 }}
+$tmp = $archive + '.starry-tmp'; $replaced = $false
+for ($i = 0; $i -lt 15 -and -not $replaced; $i++) {{
+  try {{
+    [System.IO.File]::Copy($src, $tmp, $true)
+    [System.IO.File]::Replace($tmp, $archive, [NullString]::Value)
+    $replaced = $true
+  }} catch {{ "{label}: archive busy, retrying ($($_.Exception.Message))"; Start-Sleep -Seconds 2 }}
 }}
+if ($replaced) {{ "{label}: archive replaced" }} else {{ "{label}: FAILED to replace the archive; T3 is unchanged"; Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }}
 if ($exe) {{ Start-Process -FilePath $exe }}
+"{label}: done"
 Stop-Transcript | Out-Null
-''', encoding='utf-8')
-    flags = 0x00000008 | 0x00000200 | 0x01000000  # DETACHED_PROCESS | NEW_PROCESS_GROUP | BREAKAWAY_FROM_JOB
-    cmd = ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', str(script)]
-    try:
-        subprocess.Popen(cmd, creationflags=flags, close_fds=True)
-    except OSError:  # job does not allow breakaway
-        subprocess.Popen(cmd, creationflags=flags & ~0x01000000, close_fds=True)
+""", encoding='utf-8')
+    cmd = f'powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{script}"'
+    # Start it through WMI so it is not a child of T3 or of the agent's shell: an agent's job object
+    # kills its children when the command returns, even with DETACHED_PROCESS and breakaway flags.
+    create = ('$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create '
+              '-Arguments @{CommandLine = $env:STARRY_SWAP}; exit $r.ReturnValue')
+    result = subprocess.run(['powershell', '-NoProfile', '-Command', create],
+                            env=dict(os.environ, STARRY_SWAP=cmd), capture_output=True, text=True)
+    if result.returncode != 0:  # no WMI: fall back to a detached child
+        flags = 0x00000008 | 0x00000200 | 0x01000000  # DETACHED_PROCESS | NEW_PROCESS_GROUP | BREAKAWAY_FROM_JOB
+        args = ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', str(script)]
+        try:
+            subprocess.Popen(args, creationflags=flags, close_fds=True)
+        except OSError:
+            subprocess.Popen(args, creationflags=flags & ~0x01000000, close_fds=True)
+    say(f'Helper started; progress is logged to {log}')
 
 
 def install():
