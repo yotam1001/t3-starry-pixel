@@ -1,5 +1,7 @@
 # Starry Pixel for T3 Code
 
+[![Featured on Agent Skins](https://agentskins.app/badge/t3/starry-pixel.svg)](https://agentskins.app/skins/t3/starry-pixel)
+
 An animated, pixel-art night sky behind [T3 Code](https://t3.codes), painted in the spirit of
 Van Gogh's *The Starry Night* (1889).
 
