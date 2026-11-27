@@ -55,3 +55,5 @@ The installer verifies every other file in the archive byte for byte and keeps b
 ## License
 
 MIT. The wallpaper is original procedural pixel art inspired by a public-domain painting.
+
+[![Featured on AgentSkins](https://agentskins.app/badge/t3/starry-pixel.svg)](https://agentskins.app/skins/t3/starry-pixel)
